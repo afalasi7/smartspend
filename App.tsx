@@ -243,7 +243,7 @@ export default function App() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.eyebrow}>Smart money tracking</Text>
+            <Text style={styles.eyebrow}>Copilot x Linear direction</Text>
             <Text style={styles.headerTitle}>SmartSpend</Text>
           </View>
           <View style={styles.syncBadge}>
@@ -254,19 +254,30 @@ export default function App() {
         {activeTab === 'dashboard' ? (
           <>
             <View style={styles.primaryCard}>
-              <Text style={styles.cardLabel}>This month</Text>
+              <Text style={styles.cardLabel}>Monthly spend</Text>
               <Text style={styles.totalValue}>${totalThisMonth.toFixed(2)}</Text>
-              <Text style={styles.cardHint}>A clean view of how much you have spent this month.</Text>
+              <Text style={styles.cardHint}>A focused snapshot of your current pace and spending pattern.</Text>
+              <View style={styles.heroDivider} />
+              <View style={styles.heroFooterRow}>
+                <View>
+                  <Text style={styles.heroFootLabel}>Top category</Text>
+                  <Text style={styles.heroFootValue}>{topCategory?.category ?? 'None yet'}</Text>
+                </View>
+                <View>
+                  <Text style={styles.heroFootLabel}>Entries</Text>
+                  <Text style={styles.heroFootValue}>{monthlyExpenseCount}</Text>
+                </View>
+              </View>
             </View>
 
             <View style={styles.statsRow}>
               <View style={styles.miniStatCard}>
-                <Text style={styles.miniStatLabel}>Entries</Text>
-                <Text style={styles.miniStatValue}>{monthlyExpenseCount}</Text>
+                <Text style={styles.miniStatLabel}>Average entry</Text>
+                <Text style={styles.miniStatValue}>${monthlyExpenseCount ? (totalThisMonth / monthlyExpenseCount).toFixed(0) : '0'}</Text>
               </View>
               <View style={styles.miniStatCard}>
-                <Text style={styles.miniStatLabel}>Top category</Text>
-                <Text style={styles.miniStatValueSmall}>{topCategory?.category ?? 'None yet'}</Text>
+                <Text style={styles.miniStatLabel}>Saved mode</Text>
+                <Text style={styles.miniStatValueSmall}>Offline</Text>
               </View>
             </View>
 
@@ -276,8 +287,11 @@ export default function App() {
                 <Text style={styles.mutedText}>Add your first expense to see the breakdown.</Text>
               ) : (
                 categoryTotals.map((item) => (
-                  <View key={item.category} style={styles.metricRow}>
-                    <Text style={styles.metricLabel}>{item.category}</Text>
+                  <View key={item.category} style={styles.breakdownRow}>
+                    <View>
+                      <Text style={styles.metricLabel}>{item.category}</Text>
+                      <Text style={styles.breakdownMeta}>Category total</Text>
+                    </View>
                     <Text style={styles.metricValue}>${item.total.toFixed(2)}</Text>
                   </View>
                 ))
@@ -360,16 +374,18 @@ export default function App() {
 
             <Text style={styles.helperText}>Press and hold a quick amount to save instantly after entering a title.</Text>
 
-            <Field label="Title" value={title} onChangeText={setTitle} placeholder="Groceries" />
-            <Field
-              label="Amount"
-              value={amount}
-              onChangeText={setAmount}
-              placeholder="45.90"
-              keyboardType="decimal-pad"
-            />
-            <Field label="Date" value={date} onChangeText={setDate} placeholder="2026-04-03" />
-            <Field label="Note" value={note} onChangeText={setNote} placeholder="Optional note" />
+            <View style={styles.formSection}>
+              <Field label="Title" value={title} onChangeText={setTitle} placeholder="Groceries" />
+              <Field
+                label="Amount"
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="45.90"
+                keyboardType="decimal-pad"
+              />
+              <Field label="Date" value={date} onChangeText={setDate} placeholder="2026-04-03" />
+              <Field label="Note" value={note} onChangeText={setNote} placeholder="Optional note" />
+            </View>
 
             <Text style={styles.fieldLabel}>Category</Text>
             <View style={styles.categoryWrap}>
@@ -550,7 +566,7 @@ function ExpenseRow({
 const styles = StyleSheet.create({
   appShell: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#0B1020',
   },
   content: {
     paddingTop: 64,
@@ -564,12 +580,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    backgroundColor: '#111827',
+    borderRadius: 28,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 8,
+    borderColor: '#1F2937',
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  heroDivider: {
+    height: 1,
+    backgroundColor: '#1F2937',
+    marginVertical: 4,
+  },
+  heroFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  heroFootLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  heroFootValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    marginTop: 4,
   },
   statsRow: {
     flexDirection: 'row',
@@ -577,41 +620,43 @@ const styles = StyleSheet.create({
   },
   miniStatCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#121A2B',
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#1F2937',
     gap: 8,
   },
   miniStatLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#94A3B8',
   },
   miniStatValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8FAFC',
   },
   miniStatValueSmall: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8FAFC',
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0F172A',
     borderRadius: 22,
     padding: 20,
     gap: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#1E293B',
   },
   amountHeroCard: {
-    backgroundColor: '#111827',
+    backgroundColor: '#151E31',
     borderRadius: 22,
     padding: 20,
     gap: 6,
+    borderWidth: 1,
+    borderColor: '#243041',
   },
   amountHeroLabel: {
     fontSize: 13,
@@ -632,52 +677,68 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#94A3B8',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   headerTitle: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8FAFC',
     marginTop: 4,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8FAFC',
   },
   cardLabel: {
     fontSize: 15,
-    color: '#6B7280',
+    color: '#94A3B8',
     fontWeight: '600',
   },
   totalValue: {
     fontSize: 42,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
   },
   cardHint: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#6B7280',
+    color: '#94A3B8',
   },
   mutedText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#94A3B8',
   },
   syncBadge: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#111827',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#1F2937',
   },
   syncText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2563EB',
+    color: '#A5B4FC',
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#1F2937',
+  },
+  breakdownMeta: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
   },
   metricRow: {
     flexDirection: 'row',
@@ -687,12 +748,12 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 15,
-    color: '#4B5563',
+    color: '#E5E7EB',
   },
   metricValue: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
+    color: '#F8FAFC',
   },
   inlineHeader: {
     flexDirection: 'row',
@@ -702,25 +763,33 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2563EB',
+    color: '#A5B4FC',
   },
   fieldGroup: {
     gap: 8,
   },
+  formSection: {
+    gap: 14,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#1F2937',
+  },
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#CBD5E1',
   },
   input: {
     height: 52,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#334155',
+    backgroundColor: '#0B1220',
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#111827',
+    color: '#F8FAFC',
   },
   categoryWrap: {
     flexDirection: 'row',
@@ -740,17 +809,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#334155',
+    backgroundColor: '#0B1220',
   },
   quickAmountButtonActive: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
+    backgroundColor: '#1D4ED8',
+    borderColor: '#1D4ED8',
   },
   quickAmountText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: '#E2E8F0',
   },
   quickAmountTextActive: {
     color: '#FFFFFF',
@@ -760,23 +829,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#334155',
+    backgroundColor: '#0B1220',
   },
   categoryChipActive: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
+    backgroundColor: '#F8FAFC',
+    borderColor: '#F8FAFC',
   },
   categoryChipText: {
-    color: '#374151',
+    color: '#CBD5E1',
     fontWeight: '600',
   },
   categoryChipTextActive: {
-    color: '#FFFFFF',
+    color: '#0F172A',
   },
   primaryButton: {
     marginTop: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#F8FAFC',
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -785,22 +854,22 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#0F172A',
   },
   secondaryButton: {
     marginTop: 8,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#111827',
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     height: 54,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#334155',
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#E2E8F0',
   },
   inlineActionsRow: {
     flexDirection: 'row',
@@ -813,8 +882,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#334155',
+    backgroundColor: '#0B1220',
     paddingHorizontal: 12,
   },
   ghostActionButtonDisabled: {
@@ -823,7 +892,7 @@ const styles = StyleSheet.create({
   ghostActionText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
+    color: '#E2E8F0',
   },
   ghostActionTextDisabled: {
     color: '#8E8E93',
@@ -835,9 +904,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F3',
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#1F2937',
   },
   expenseTextBlock: {
     flex: 1,
@@ -847,11 +919,11 @@ const styles = StyleSheet.create({
   expenseTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#F8FAFC',
   },
   expenseMeta: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#94A3B8',
   },
   expenseActions: {
     alignItems: 'flex-end',
@@ -860,7 +932,7 @@ const styles = StyleSheet.create({
   expenseAmount: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8FAFC',
   },
   rowActions: {
     flexDirection: 'row',
@@ -868,7 +940,7 @@ const styles = StyleSheet.create({
   },
   editText: {
     fontSize: 13,
-    color: '#2563EB',
+    color: '#A5B4FC',
     fontWeight: '600',
   },
   deleteText: {
@@ -883,11 +955,11 @@ const styles = StyleSheet.create({
     bottom: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: 'rgba(15,23,42,0.96)',
     padding: 8,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#1F2937',
   },
   tabButton: {
     flex: 1,
@@ -897,32 +969,32 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   tabButtonActive: {
-    backgroundColor: '#111827',
+    backgroundColor: '#F8FAFC',
   },
   tabButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#94A3B8',
   },
   tabButtonTextActive: {
-    color: '#FFFFFF',
+    color: '#0F172A',
   },
   helperText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#6B7280',
+    color: '#64748B',
   },
   emptyStateCard: {
     borderRadius: 18,
     padding: 18,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#111827',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#1F2937',
     gap: 6,
   },
   emptyStateTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8FAFC',
   },
 });

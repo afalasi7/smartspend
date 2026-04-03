@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartSpend Design References</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3f4f6;
+        --card: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --accent: #2563eb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 48px 20px 80px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 40px;
+        line-height: 1.1;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .hero {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 28px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 22px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .note {
+        background: #eff6ff;
+        color: #1e3a8a;
+        border-radius: 14px;
+        padding: 14px 16px;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="eyebrow">SmartSpend</div>
+        <h1>Design Reference Board</h1>
+        <p>
+          These are different visual directions worth borrowing from. Pick the one that feels closest,
+          or mix two together and I can redesign SmartSpend around it.
+        </p>
+        <div class="note">
+          Suggested approach: choose one app for layout, one app for typography, and one app for color mood.
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <div class="eyebrow">Direction 1</div>
+          <h2>Apple</h2>
+          <p>Best if you want it calm, premium, spacious, and minimal.</p>
+          <ul>
+            <li>Large headings and generous whitespace</li>
+            <li>Very light backgrounds and soft borders</li>
+            <li>Simple cards with almost no visual noise</li>
+          </ul>
+          <a href="https://www.apple.com" target="_blank" rel="noreferrer">Open apple.com</a>
+        </article>
+
+        <article class="card">
+          <div class="eyebrow">Direction 2</div>
+          <h2>Monzo</h2>
+          <p>Best if you want friendly finance UI that still feels modern and clear.</p>
+          <ul>
+            <li>Strong hierarchy and easy-to-scan sections</li>
+            <li>Rounded cards and approachable tone</li>
+            <li>Good inspiration for transaction history</li>
+          </ul>
+          <a href="https://monzo.com" target="_blank" rel="noreferrer">Open monzo.com</a>
+        </article>
+
+        <article class="card">
+          <div class="eyebrow">Direction 3</div>
+          <h2>Revolut</h2>
+          <p>Best if you want a sharper, more high-end fintech feeling.</p>
+          <ul>
+            <li>Darker accents with premium contrast</li>
+            <li>Confident typography and stronger density</li>
+            <li>Good reference for polished dashboard cards</li>
+          </ul>
+          <a href="https://www.revolut.com" target="_blank" rel="noreferrer">Open revolut.com</a>
+        </article>
+
+        <article class="card">
+          <div class="eyebrow">Direction 4</div>
+          <h2>Copilot Money</h2>
+          <p>Best if you want SmartSpend to feel like a premium personal finance app.</p>
+          <ul>
+            <li>Very strong app branding and visual polish</li>
+            <li>Excellent use of charts, spacing, and summaries</li>
+            <li>Good inspiration for onboarding and dashboard flow</li>
+          </ul>
+          <a href="https://copilot.money" target="_blank" rel="noreferrer">Open copilot.money</a>
+        </article>
+
+        <article class="card">
+          <div class="eyebrow">Direction 5</div>
+          <h2>Ramp</h2>
+          <p>Best if you want a clean, data-heavy but still beautiful interface.</p>
+          <ul>
+            <li>Great for layout structure and information grouping</li>
+            <li>Professional card design and spacing</li>
+            <li>Good reference for web dashboard patterns</li>
+          </ul>
+          <a href="https://ramp.com" target="_blank" rel="noreferrer">Open ramp.com</a>
+        </article>
+
+        <article class="card">
+          <div class="eyebrow">Direction 6</div>
+          <h2>Linear</h2>
+          <p>Not a finance app, but excellent for sleek product design.</p>
+          <ul>
+            <li>Super refined spacing and typography</li>
+            <li>Strong modern dark and light theme inspiration</li>
+            <li>Useful if you want SmartSpend to feel more premium-tech</li>
+          </ul>
+          <a href="https://linear.app" target="_blank" rel="noreferrer">Open linear.app</a>
+        </article>
+
+        <article class="card">
+          <div class="eyebrow">Direction 7</div>
+          <h2>Wealthfront</h2>
+          <p>Best if you want trust, simplicity, and a softer finance tone.</p>
+          <ul>
+            <li>Warm but clean finance visual language</li>
+            <li>Good balance between data and calmness</li>
+            <li>Nice reference for landing and summary sections</li>
+          </ul>
+          <a href="https://www.wealthfront.com" target="_blank" rel="noreferrer">Open wealthfront.com</a>
+        </article>
+
+        <article class="card">
+          <div class="eyebrow">Direction 8</div>
+          <h2>Mint Alternatives Roundup</h2>
+          <p>Useful if you want to compare how many consumer budget apps look in one place.</p>
+          <ul>
+            <li>Good for spotting patterns you like or hate</li>
+            <li>Helpful for choosing between playful and premium</li>
+            <li>Lets us position SmartSpend more intentionally</li>
+          </ul>
+          <a href="https://www.nerdwallet.com/article/finance/mint-alternatives" target="_blank" rel="noreferrer">Open roundup</a>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
