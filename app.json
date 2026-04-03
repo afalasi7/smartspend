@@ -2,7 +2,9 @@
   "expo": {
     "name": "SmartSpend",
     "slug": "smartspend",
+    "description": "Simple, sleek expense tracking for everyday spending.",
     "version": "1.0.0",
+    "scheme": "smartspend",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,15 +12,17 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0f172a"
     },
     "ios": {
+      "bundleIdentifier": "io.alfalasi.smartspend",
       "supportsTablet": true
     },
     "android": {
+      "package": "io.alfalasi.smartspend",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#f8fafc"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
