@@ -24,13 +24,22 @@ type TabKey = 'dashboard' | 'add' | 'expenses' | 'settings';
 
 const STORAGE_KEY = 'expenseflow-expenses';
 const categories = ['Food', 'Transport', 'Shopping', 'Bills', 'Health', 'Travel'];
-const quickAmounts = [5, 10, 20, 50, 100, 500];
+const quickAmounts = [5, 10, 20, 50, 100, 250];
 const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: 'dashboard', label: 'Overview' },
-  { key: 'add', label: 'Capture' },
+  { key: 'dashboard', label: 'Home' },
+  { key: 'add', label: 'Add' },
   { key: 'expenses', label: 'Activity' },
   { key: 'settings', label: 'Settings' },
 ];
+
+const categoryColors: Record<string, { tint: string; soft: string }> = {
+  Food: { tint: '#F97316', soft: '#FFEDD5' },
+  Transport: { tint: '#3B82F6', soft: '#DBEAFE' },
+  Shopping: { tint: '#8B5CF6', soft: '#EDE9FE' },
+  Bills: { tint: '#0F766E', soft: '#CCFBF1' },
+  Health: { tint: '#EF4444', soft: '#FEE2E2' },
+  Travel: { tint: '#D97706', soft: '#FEF3C7' },
+};
 
 const emptyForm = () => ({
   title: '',
@@ -88,7 +97,7 @@ export default function App() {
   const monthKey = new Date().toISOString().slice(0, 7);
   const monthExpenses = expenses.filter((expense) => expense.date.startsWith(monthKey));
   const totalThisMonth = monthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const recentExpenses = [...expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const recentExpenses = [...expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
   const categoryTotals = categories
     .map((item) => ({
       category: item,
@@ -113,15 +122,6 @@ export default function App() {
     setDate(form.date);
     setNote(form.note);
   };
-
-  const buildExpensePayload = (value: number) => ({
-    id: editingExpenseId ?? `${Date.now()}`,
-    title: title.trim(),
-    amount: value,
-    category,
-    date,
-    note: note.trim(),
-  });
 
   const saveExpense = (expensePayload: Expense) => {
     setExpenses((current) => {
@@ -150,7 +150,33 @@ export default function App() {
       return;
     }
 
-    saveExpense(buildExpensePayload(parsedAmount));
+    saveExpense({
+      id: editingExpenseId ?? `${Date.now()}`,
+      title: title.trim(),
+      amount: parsedAmount,
+      category,
+      date,
+      note: note.trim(),
+    });
+  };
+
+  const handleQuickAmount = (value: number) => {
+    setAmount(value.toString());
+  };
+
+  const handleQuickAdd = (value: number) => {
+    if (!title.trim()) {
+      setTitle(category);
+    }
+
+    saveExpense({
+      id: `${Date.now()}`,
+      title: title.trim() || category,
+      amount: value,
+      category,
+      date,
+      note: note.trim(),
+    });
   };
 
   const handleEditExpense = (expense: Expense) => {
@@ -171,27 +197,6 @@ export default function App() {
     if (editingExpenseId === id) {
       resetForm();
     }
-  };
-
-  const handleQuickAmount = (value: number) => {
-    setAmount(value.toString());
-  };
-
-  const handleQuickSave = (value: number) => {
-    const nextTitle = title.trim();
-    if (!nextTitle) {
-      Alert.alert('Title required', 'Add a short title before using quick save.');
-      return;
-    }
-
-    saveExpense({
-      id: `${Date.now()}`,
-      title: nextTitle,
-      amount: value,
-      category,
-      date,
-      note: note.trim(),
-    });
   };
 
   const handleUndoLastAdd = () => {
@@ -220,76 +225,92 @@ export default function App() {
 
   return (
     <View style={styles.appShell}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topbar}>
           <View>
-            <Text style={styles.kicker}>SmartSpend</Text>
-            <Text style={styles.screenTitle}>Spend with clarity.</Text>
+            <View style={styles.brandRow}>
+              <View style={styles.brandMark}>
+                <View style={styles.brandDot} />
+              </View>
+              <Text style={styles.brandText}>SmartSpend</Text>
+            </View>
+            <Text style={styles.headline}>A cleaner way to track daily spending.</Text>
           </View>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusPillText}>{isLoaded ? 'Offline saved' : 'Loading'}</Text>
+          <View style={styles.syncPill}>
+            <Text style={styles.syncPillText}>{isLoaded ? 'Saved locally' : 'Loading'}</Text>
           </View>
+        </View>
+
+        <View style={styles.quickAddCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Quick add</Text>
+            <Text style={styles.sectionMeta}>One tap</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAddRail}>
+            {quickAmounts.map((value) => (
+              <Pressable key={value} onPress={() => handleQuickAdd(value)} style={styles.quickAddPill}>
+                <Text style={styles.quickAddPillText}>+ ${value}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          {lastAddedExpense ? (
+            <View style={styles.undoRow}>
+              <Text style={styles.undoText}>Last add: {lastAddedExpense.title}</Text>
+              <Pressable onPress={handleUndoLastAdd}>
+                <Text style={styles.undoLink}>Undo</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         {activeTab === 'dashboard' ? (
           <>
-            <View style={styles.heroPanel}>
-              <Text style={styles.heroEyebrow}>This month</Text>
+            <View style={styles.heroCard}>
+              <Text style={styles.heroLabel}>This month</Text>
               <Text style={styles.heroAmount}>${totalThisMonth.toFixed(2)}</Text>
-              <Text style={styles.heroSubtext}>
+              <Text style={styles.heroText}>
                 {monthlyExpenseCount === 0
-                  ? 'Start tracking with your first expense.'
-                  : `${monthlyExpenseCount} expenses captured so far.`}
+                  ? 'No entries yet. Start with quick add above.'
+                  : `${monthlyExpenseCount} expenses tracked this month.`}
               </Text>
-              <View style={styles.heroMetricsRow}>
-                <MetricPill label="Average" value={`$${averageExpense.toFixed(0)}`} />
-                <MetricPill label="Top" value={topCategory?.category ?? 'None'} />
+              <View style={styles.heroStatsRow}>
+                <SummaryChip label="Average" value={`$${averageExpense.toFixed(0)}`} />
+                <SummaryChip label="Top" value={topCategory?.category ?? 'None'} />
               </View>
             </View>
 
-            <View style={styles.statGrid}>
-              <InfoCard label="Transactions" value={`${monthlyExpenseCount}`} note="Current month" />
-              <InfoCard label="Storage" value="Local" note="This device only" />
+            <View style={styles.summaryGrid}>
+              <SoftStatCard label="Transactions" value={`${monthlyExpenseCount}`} subtitle="This month" />
+              <SoftStatCard label="Saved mode" value="Offline" subtitle="Private to device" />
             </View>
 
-            <View style={styles.sectionCard}>
+            <View style={styles.surfaceCard}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Category pace</Text>
-                <Text style={styles.sectionCaption}>Month view</Text>
+                <Text style={styles.sectionTitle}>Spending by category</Text>
+                <Text style={styles.sectionMeta}>Monthly</Text>
               </View>
               {categoryTotals.length === 0 ? (
-                <EmptyState title="No spending yet" text="Your category mix will appear here once you add a few entries." />
+                <EmptyState title="Nothing here yet" text="Your category mix appears after you add a few expenses." />
               ) : (
                 categoryTotals.slice(0, 4).map((item) => (
-                  <CategoryBar
-                    key={item.category}
-                    category={item.category}
-                    total={item.total}
-                    max={categoryTotals[0].total}
-                  />
+                  <CategoryRow key={item.category} category={item.category} total={item.total} max={categoryTotals[0].total} />
                 ))
               )}
             </View>
 
-            <View style={styles.sectionCard}>
+            <View style={styles.surfaceCard}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recent activity</Text>
                 <Pressable onPress={() => setActiveTab('expenses')}>
-                  <Text style={styles.inlineLink}>Open all</Text>
+                  <Text style={styles.inlineLink}>See all</Text>
                 </Pressable>
               </View>
               {recentExpenses.length === 0 ? (
-                <EmptyState title="Nothing captured" text="Use the Capture tab to log your first expense." />
+                <EmptyState title="No expenses yet" text="Capture your first expense from the Add tab or quick add strip." />
               ) : (
                 recentExpenses.slice(0, 3).map((expense) => (
-                  <ExpenseCard
-                    key={expense.id}
-                    compact
-                    expense={expense}
-                    onDelete={handleDeleteExpense}
-                    onEdit={handleEditExpense}
-                  />
+                  <ExpenseCard key={expense.id} compact expense={expense} onDelete={handleDeleteExpense} onEdit={handleEditExpense} />
                 ))
               )}
             </View>
@@ -298,52 +319,40 @@ export default function App() {
 
         {activeTab === 'add' ? (
           <>
-            <View style={styles.captureHeaderCard}>
-              <Text style={styles.captureTitle}>{editingExpenseId ? 'Edit entry' : 'Capture expense'}</Text>
-              <Text style={styles.captureHint}>Quick buttons for speed, full form for control.</Text>
-              <Text style={styles.captureAmount}>${hasValidAmount ? numericAmount.toFixed(2) : '0.00'}</Text>
+            <View style={styles.addPreviewCard}>
+              <Text style={styles.addPreviewLabel}>{editingExpenseId ? 'Editing expense' : 'New expense'}</Text>
+              <Text style={styles.addPreviewAmount}>${hasValidAmount ? numericAmount.toFixed(2) : '0.00'}</Text>
+              <Text style={styles.addPreviewText}>Set the amount quickly, then adjust the details below.</Text>
             </View>
 
-            <View style={styles.sectionCard}>
+            <View style={styles.surfaceCard}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Quick amounts</Text>
-                <Text style={styles.sectionCaption}>Hold to save</Text>
+                <Text style={styles.sectionTitle}>Amount picker</Text>
+                <Text style={styles.sectionMeta}>Tap to fill</Text>
               </View>
-              <View style={styles.quickAmountGrid}>
+              <View style={styles.amountGrid}>
                 {quickAmounts.map((value) => {
                   const isActive = amount === value.toString();
                   return (
                     <Pressable
                       key={value}
-                      delayLongPress={300}
-                      onLongPress={() => handleQuickSave(value)}
                       onPress={() => handleQuickAmount(value)}
-                      style={[styles.quickAmountButton, isActive && styles.quickAmountButtonActive]}
+                      style={[styles.amountButton, isActive && styles.amountButtonActive]}
                     >
-                      <Text style={[styles.quickAmountText, isActive && styles.quickAmountTextActive]}>${value}</Text>
+                      <Text style={[styles.amountButtonText, isActive && styles.amountButtonTextActive]}>${value}</Text>
                     </Pressable>
                   );
                 })}
               </View>
-              <View style={styles.actionRow}>
-                <ActionButton disabled={!lastAddedExpense} label="Undo last add" onPress={handleUndoLastAdd} />
-                <ActionButton destructive label="Reset all" onPress={handleResetAll} />
-              </View>
             </View>
 
-            <View style={styles.sectionCard}>
+            <View style={styles.surfaceCard}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Details</Text>
-                <Text style={styles.sectionCaption}>{editingExpenseId ? 'Update current entry' : 'Manual entry'}</Text>
+                <Text style={styles.sectionTitle}>Expense details</Text>
+                <Text style={styles.sectionMeta}>Manual</Text>
               </View>
               <Field label="Title" value={title} onChangeText={setTitle} placeholder="Groceries" />
-              <Field
-                label="Amount"
-                value={amount}
-                onChangeText={setAmount}
-                placeholder="45.90"
-                keyboardType="decimal-pad"
-              />
+              <Field label="Amount" value={amount} onChangeText={setAmount} placeholder="45.90" keyboardType="decimal-pad" />
               <Field label="Date" value={date} onChangeText={setDate} placeholder="2026-04-03" />
               <Field label="Note" value={note} onChangeText={setNote} placeholder="Optional note" />
               <Text style={styles.fieldLabel}>Category</Text>
@@ -351,11 +360,8 @@ export default function App() {
                 {categories.map((item) => {
                   const isActive = item === category;
                   return (
-                    <Pressable
-                      key={item}
-                      onPress={() => setCategory(item)}
-                      style={[styles.categoryChip, isActive && styles.categoryChipActive]}
-                    >
+                    <Pressable key={item} onPress={() => setCategory(item)} style={[styles.categoryChip, isActive && styles.categoryChipActive]}>
+                      <View style={[styles.categoryDot, { backgroundColor: categoryColors[item].tint }]} />
                       <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>{item}</Text>
                     </Pressable>
                   );
@@ -374,36 +380,32 @@ export default function App() {
         ) : null}
 
         {activeTab === 'expenses' ? (
-          <View style={styles.sectionCard}>
+          <View style={styles.surfaceCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>All activity</Text>
-              <Text style={styles.sectionCaption}>{expenses.length} items</Text>
+              <Text style={styles.sectionTitle}>Activity</Text>
+              <Text style={styles.sectionMeta}>{expenses.length} items</Text>
             </View>
             {expenses.length === 0 ? (
-              <EmptyState title="No expenses yet" text="Capture something from the Capture tab and it will appear here." />
+              <EmptyState title="No activity yet" text="Your timeline will show each expense after you add it." />
             ) : (
               [...expenses]
                 .sort((a, b) => b.date.localeCompare(a.date))
-                .map((expense) => (
-                  <ExpenseCard key={expense.id} expense={expense} onDelete={handleDeleteExpense} onEdit={handleEditExpense} />
-                ))
+                .map((expense) => <ExpenseCard key={expense.id} expense={expense} onDelete={handleDeleteExpense} onEdit={handleEditExpense} />)
             )}
           </View>
         ) : null}
 
         {activeTab === 'settings' ? (
-          <View style={styles.sectionCard}>
+          <View style={styles.surfaceCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Settings</Text>
-              <Text style={styles.sectionCaption}>Local MVP</Text>
+              <Text style={styles.sectionMeta}>Simple MVP</Text>
             </View>
             <SettingRow label="Mode" value="Offline" />
-            <SettingRow label="Storage" value="This device only" />
-            <SettingRow label="Editing" value="Enabled" />
-            <SettingRow label="Current style" value="Finance dark" />
-            <Text style={styles.supportText}>
-              This version keeps everything local so the app stays simple while the UX gets refined.
-            </Text>
+            <SettingRow label="Storage" value="Device only" />
+            <SettingRow label="Quick add" value="Enabled" />
+            <SettingRow label="Brand" value="SmartSpend" />
+            <Text style={styles.settingsText}>This version stays intentionally small while we refine the product feel.</Text>
             <Pressable onPress={handleResetAll} style={styles.secondaryButton}>
               <Text style={styles.secondaryButtonText}>Clear all expenses</Text>
             </Pressable>
@@ -415,11 +417,7 @@ export default function App() {
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
-            <Pressable
-              key={tab.key}
-              onPress={() => setActiveTab(tab.key)}
-              style={[styles.tabButton, isActive && styles.tabButtonActive]}
-            >
+            <Pressable key={tab.key} onPress={() => setActiveTab(tab.key)} style={[styles.tabButton, isActive && styles.tabButtonActive]}>
               <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>{tab.label}</Text>
             </Pressable>
           );
@@ -449,7 +447,7 @@ function Field({
         keyboardType={keyboardType}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#64748B"
+        placeholderTextColor="#9CA3AF"
         style={styles.input}
         value={value}
       />
@@ -457,68 +455,42 @@ function Field({
   );
 }
 
-function MetricPill({ label, value }: { label: string; value: string }) {
+function SummaryChip({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.metricPill}>
-      <Text style={styles.metricPillLabel}>{label}</Text>
-      <Text style={styles.metricPillValue}>{value}</Text>
+    <View style={styles.summaryChip}>
+      <Text style={styles.summaryChipLabel}>{label}</Text>
+      <Text style={styles.summaryChipValue}>{value}</Text>
     </View>
   );
 }
 
-function InfoCard({ label, value, note }: { label: string; value: string; note: string }) {
+function SoftStatCard({ label, value, subtitle }: { label: string; value: string; subtitle: string }) {
   return (
-    <View style={styles.infoCard}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
-      <Text style={styles.infoNote}>{note}</Text>
+    <View style={styles.softStatCard}>
+      <Text style={styles.softStatLabel}>{label}</Text>
+      <Text style={styles.softStatValue}>{value}</Text>
+      <Text style={styles.softStatSubtitle}>{subtitle}</Text>
     </View>
   );
 }
 
-function CategoryBar({
-  category,
-  total,
-  max,
-}: {
-  category: string;
-  total: number;
-  max: number;
-}) {
+function CategoryRow({ category, total, max }: { category: string; total: number; max: number }) {
   const width = (max === 0 ? '0%' : `${Math.max(10, Math.round((total / max) * 100))}%`) as `${number}%`;
+  const colors = categoryColors[category];
 
   return (
-    <View style={styles.categoryBarRow}>
-      <View style={styles.categoryBarHeader}>
-        <Text style={styles.categoryBarTitle}>{category}</Text>
-        <Text style={styles.categoryBarAmount}>${total.toFixed(2)}</Text>
+    <View style={styles.categoryRow}>
+      <View style={styles.categoryRowHeader}>
+        <View style={styles.categoryTitleRow}>
+          <View style={[styles.categoryDot, { backgroundColor: colors.tint }]} />
+          <Text style={styles.categoryRowTitle}>{category}</Text>
+        </View>
+        <Text style={styles.categoryRowAmount}>${total.toFixed(2)}</Text>
       </View>
-      <View style={styles.categoryBarTrack}>
-        <View style={[styles.categoryBarFill, { width }]} />
+      <View style={styles.categoryTrack}>
+        <View style={[styles.categoryFill, { width, backgroundColor: colors.tint }]} />
       </View>
     </View>
-  );
-}
-
-function ActionButton({
-  destructive,
-  disabled,
-  label,
-  onPress,
-}: {
-  destructive?: boolean;
-  disabled?: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.actionButton, disabled && styles.actionButtonDisabled]}
-    >
-      <Text style={[styles.actionButtonText, destructive && styles.actionButtonTextDanger]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -551,16 +523,21 @@ function ExpenseCard({
   onDelete: (id: string) => void;
   onEdit: (expense: Expense) => void;
 }) {
+  const colors = categoryColors[expense.category];
+
   return (
     <View style={[styles.expenseCard, compact && styles.expenseCardCompact]}>
+      <View style={[styles.expenseIconBubble, { backgroundColor: colors.soft }]}>
+        <View style={[styles.expenseIconDot, { backgroundColor: colors.tint }]} />
+      </View>
       <View style={styles.expenseMain}>
-        <View style={styles.expenseTopLine}>
+        <View style={styles.expenseTopRow}>
           <Text style={styles.expenseTitle}>{expense.title}</Text>
-          <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
+          <Text style={styles.expenseAmount}>-${expense.amount.toFixed(2)}</Text>
         </View>
         <View style={styles.expenseMetaRow}>
-          <Text style={styles.expenseChip}>{expense.category}</Text>
-          <Text style={styles.expenseMeta}>{expense.date}</Text>
+          <Text style={styles.expenseCategory}>{expense.category}</Text>
+          <Text style={styles.expenseDate}>{expense.date}</Text>
         </View>
         {expense.note ? <Text style={styles.expenseNote}>{expense.note}</Text> : null}
       </View>
@@ -579,10 +556,10 @@ function ExpenseCard({
 const styles = StyleSheet.create({
   appShell: {
     flex: 1,
-    backgroundColor: '#090D16',
+    backgroundColor: '#F6F1E8',
   },
   content: {
-    paddingTop: 56,
+    paddingTop: 54,
     paddingHorizontal: 20,
     paddingBottom: 120,
     gap: 16,
@@ -593,280 +570,308 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
   },
-  kicker: {
-    color: '#7C89A6',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  screenTitle: {
-    color: '#F8FAFC',
-    fontSize: 30,
-    fontWeight: '700',
-    marginTop: 6,
+  brandMark: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  statusPill: {
-    backgroundColor: '#131B2C',
-    borderColor: '#202A3C',
-    borderWidth: 1,
+  brandDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#86EFAC',
+  },
+  brandText: {
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headline: {
+    marginTop: 10,
+    color: '#4B5563',
+    fontSize: 15,
+    lineHeight: 22,
+    maxWidth: 260,
+  },
+  syncPill: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E7E0D4',
   },
-  statusPillText: {
-    color: '#A5B4FC',
+  syncPillText: {
+    color: '#6B7280',
     fontSize: 12,
     fontWeight: '700',
   },
-  heroPanel: {
-    backgroundColor: '#101827',
-    borderWidth: 1,
-    borderColor: '#1E293B',
+  quickAddCard: {
+    backgroundColor: '#FFFDF9',
     borderRadius: 28,
-    padding: 24,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E9E2D8',
     gap: 12,
   },
-  heroEyebrow: {
-    color: '#94A3B8',
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  sectionMeta: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  quickAddRail: {
+    gap: 10,
+    paddingRight: 8,
+  },
+  quickAddPill: {
+    backgroundColor: '#111827',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  quickAddPillText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  undoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  undoText: {
+    color: '#6B7280',
     fontSize: 13,
-    fontWeight: '600',
+  },
+  undoLink: {
+    color: '#111827',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  heroCard: {
+    backgroundColor: '#111827',
+    borderRadius: 32,
+    padding: 24,
+    gap: 10,
+  },
+  heroLabel: {
+    color: '#C7D2FE',
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
   },
   heroAmount: {
     color: '#FFFFFF',
-    fontSize: 46,
+    fontSize: 48,
     fontWeight: '700',
   },
-  heroSubtext: {
-    color: '#94A3B8',
+  heroText: {
+    color: '#CBD5E1',
     fontSize: 15,
     lineHeight: 22,
   },
-  heroMetricsRow: {
+  heroStatsRow: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 4,
   },
-  metricPill: {
+  summaryChip: {
     flex: 1,
-    backgroundColor: '#0B1220',
-    borderColor: '#243041',
-    borderWidth: 1,
+    backgroundColor: '#1F2937',
     borderRadius: 18,
     padding: 14,
     gap: 4,
   },
-  metricPillLabel: {
-    color: '#7C89A6',
+  summaryChipLabel: {
+    color: '#9CA3AF',
     fontSize: 12,
     fontWeight: '600',
   },
-  metricPillValue: {
-    color: '#F8FAFC',
-    fontSize: 18,
+  summaryChipValue: {
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '700',
   },
-  statGrid: {
+  summaryGrid: {
     flexDirection: 'row',
     gap: 12,
   },
-  infoCard: {
+  softStatCard: {
     flex: 1,
-    backgroundColor: '#0F172A',
-    borderColor: '#1E293B',
-    borderWidth: 1,
-    borderRadius: 22,
+    backgroundColor: '#FFFDF9',
+    borderRadius: 24,
     padding: 18,
-    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E9E2D8',
+    gap: 5,
   },
-  infoLabel: {
-    color: '#7C89A6',
+  softStatLabel: {
+    color: '#6B7280',
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  infoValue: {
-    color: '#F8FAFC',
-    fontSize: 28,
+  softStatValue: {
+    color: '#111827',
+    fontSize: 30,
     fontWeight: '700',
   },
-  infoNote: {
-    color: '#94A3B8',
+  softStatSubtitle: {
+    color: '#9CA3AF',
     fontSize: 13,
   },
-  sectionCard: {
-    backgroundColor: '#0F172A',
-    borderColor: '#1E293B',
-    borderWidth: 1,
-    borderRadius: 24,
+  surfaceCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 28,
     padding: 20,
+    borderWidth: 1,
+    borderColor: '#E9E2D8',
     gap: 14,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  sectionTitle: {
-    color: '#F8FAFC',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  sectionCaption: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
   inlineLink: {
-    color: '#A5B4FC',
+    color: '#111827',
     fontSize: 14,
     fontWeight: '700',
   },
-  categoryBarRow: {
+  categoryRow: {
     gap: 8,
   },
-  categoryBarHeader: {
+  categoryRowHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  categoryBarTitle: {
-    color: '#E2E8F0',
+  categoryTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+  },
+  categoryRowTitle: {
+    color: '#111827',
     fontSize: 15,
     fontWeight: '600',
   },
-  categoryBarAmount: {
-    color: '#F8FAFC',
+  categoryRowAmount: {
+    color: '#111827',
     fontSize: 14,
     fontWeight: '700',
   },
-  categoryBarTrack: {
+  categoryTrack: {
     height: 10,
     borderRadius: 999,
-    backgroundColor: '#111827',
+    backgroundColor: '#F1EADF',
     overflow: 'hidden',
   },
-  categoryBarFill: {
+  categoryFill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: '#7C3AED',
   },
   emptyState: {
-    backgroundColor: '#111827',
-    borderColor: '#1F2937',
-    borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 20,
+    backgroundColor: '#FAF6EF',
     padding: 18,
     gap: 6,
   },
   emptyTitle: {
-    color: '#F8FAFC',
+    color: '#111827',
     fontSize: 16,
     fontWeight: '700',
   },
   emptyText: {
-    color: '#94A3B8',
+    color: '#6B7280',
     fontSize: 14,
     lineHeight: 20,
   },
-  captureHeaderCard: {
-    backgroundColor: '#0D1424',
-    borderColor: '#1E293B',
-    borderWidth: 1,
+  addPreviewCard: {
+    backgroundColor: '#F5EBDD',
     borderRadius: 28,
-    padding: 24,
+    padding: 22,
     gap: 8,
   },
-  captureTitle: {
-    color: '#F8FAFC',
-    fontSize: 26,
+  addPreviewLabel: {
+    color: '#7C2D12',
+    fontSize: 13,
     fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  captureHint: {
-    color: '#94A3B8',
-    fontSize: 14,
-  },
-  captureAmount: {
-    color: '#FFFFFF',
+  addPreviewAmount: {
+    color: '#111827',
     fontSize: 42,
     fontWeight: '700',
-    marginTop: 6,
   },
-  quickAmountGrid: {
+  addPreviewText: {
+    color: '#6B7280',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  amountGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  quickAmountButton: {
-    minWidth: 90,
+  amountButton: {
+    minWidth: 88,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     borderRadius: 18,
+    backgroundColor: '#FAF6EF',
+  },
+  amountButtonActive: {
     backgroundColor: '#111827',
-    borderColor: '#263244',
-    borderWidth: 1,
   },
-  quickAmountButtonActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-  },
-  quickAmountText: {
-    color: '#E2E8F0',
-    fontSize: 18,
+  amountButtonText: {
+    color: '#111827',
+    fontSize: 17,
     fontWeight: '700',
   },
-  quickAmountTextActive: {
+  amountButtonTextActive: {
     color: '#FFFFFF',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  actionButton: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 16,
-    backgroundColor: '#111827',
-    borderColor: '#263244',
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  actionButtonDisabled: {
-    opacity: 0.45,
-  },
-  actionButtonText: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  actionButtonTextDanger: {
-    color: '#F87171',
   },
   fieldGroup: {
     gap: 8,
   },
   fieldLabel: {
-    color: '#CBD5E1',
+    color: '#374151',
     fontSize: 14,
     fontWeight: '600',
   },
   input: {
-    height: 52,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-    backgroundColor: '#0B1220',
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: '#FAF6EF',
     paddingHorizontal: 16,
+    color: '#111827',
     fontSize: 16,
-    color: '#F8FAFC',
   },
   categoryWrap: {
     flexDirection: 'row',
@@ -874,121 +879,125 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#334155',
-    backgroundColor: '#0B1220',
+    backgroundColor: '#FAF6EF',
   },
   categoryChipActive: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#F8FAFC',
+    backgroundColor: '#111827',
   },
   categoryChipText: {
-    color: '#CBD5E1',
+    color: '#374151',
+    fontSize: 14,
     fontWeight: '700',
   },
   categoryChipTextActive: {
-    color: '#0F172A',
+    color: '#FFFFFF',
   },
   primaryButton: {
-    marginTop: 6,
     height: 54,
-    borderRadius: 16,
-    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonText: {
-    color: '#0F172A',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
   secondaryButton: {
     height: 52,
-    borderRadius: 16,
-    backgroundColor: '#111827',
-    borderColor: '#334155',
-    borderWidth: 1,
+    borderRadius: 18,
+    backgroundColor: '#FAF6EF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryButtonText: {
-    color: '#E2E8F0',
+    color: '#111827',
     fontSize: 15,
     fontWeight: '700',
   },
   expenseCard: {
     flexDirection: 'row',
-    gap: 14,
-    borderRadius: 20,
-    backgroundColor: '#111827',
-    borderColor: '#1F2937',
-    borderWidth: 1,
+    gap: 12,
+    alignItems: 'flex-start',
     padding: 16,
+    borderRadius: 22,
+    backgroundColor: '#FAF6EF',
   },
   expenseCardCompact: {
     paddingVertical: 14,
   },
+  expenseIconBubble: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expenseIconDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+  },
   expenseMain: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
-  expenseTopLine: {
+  expenseTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   expenseTitle: {
-    color: '#F8FAFC',
+    color: '#111827',
     fontSize: 16,
     fontWeight: '700',
     flex: 1,
   },
   expenseAmount: {
-    color: '#F8FAFC',
+    color: '#111827',
     fontSize: 15,
     fontWeight: '700',
   },
   expenseMetaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
     flexWrap: 'wrap',
   },
-  expenseChip: {
-    color: '#C4B5FD',
-    backgroundColor: '#1C1630',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    fontSize: 12,
-    fontWeight: '700',
-    overflow: 'hidden',
+  expenseCategory: {
+    color: '#6B7280',
+    fontSize: 13,
+    fontWeight: '600',
   },
-  expenseMeta: {
-    color: '#94A3B8',
+  expenseDate: {
+    color: '#9CA3AF',
     fontSize: 13,
   },
   expenseNote: {
-    color: '#64748B',
+    color: '#6B7280',
     fontSize: 13,
     lineHeight: 18,
   },
   expenseActions: {
-    justifyContent: 'space-between',
     alignItems: 'flex-end',
-    minWidth: 52,
+    justifyContent: 'space-between',
+    minWidth: 50,
+    gap: 8,
   },
   editText: {
-    color: '#A5B4FC',
+    color: '#111827',
     fontSize: 13,
     fontWeight: '700',
   },
   deleteText: {
-    color: '#F87171',
+    color: '#DC2626',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -999,16 +1008,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   settingLabel: {
-    color: '#94A3B8',
+    color: '#6B7280',
     fontSize: 15,
   },
   settingValue: {
-    color: '#F8FAFC',
+    color: '#111827',
     fontSize: 15,
     fontWeight: '700',
   },
-  supportText: {
-    color: '#64748B',
+  settingsText: {
+    color: '#6B7280',
     fontSize: 14,
     lineHeight: 20,
   },
@@ -1020,27 +1029,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     padding: 8,
+    backgroundColor: 'rgba(255,253,249,0.96)',
     borderRadius: 22,
-    backgroundColor: 'rgba(10,15,26,0.96)',
-    borderColor: '#1F2937',
     borderWidth: 1,
+    borderColor: '#E9E2D8',
   },
   tabButton: {
     flex: 1,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
+    borderRadius: 16,
   },
   tabButtonActive: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#111827',
   },
   tabButtonText: {
-    color: '#94A3B8',
+    color: '#6B7280',
     fontSize: 12,
     fontWeight: '700',
   },
   tabButtonTextActive: {
-    color: '#0F172A',
+    color: '#FFFFFF',
   },
 });
