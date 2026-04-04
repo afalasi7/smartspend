@@ -26,8 +26,8 @@ const STORAGE_KEY = 'expenseflow-expenses';
 const categories = ['Food', 'Transport', 'Shopping', 'Bills', 'Health', 'Travel'];
 const quickAmounts = [5, 10, 20, 50, 100, 500];
 const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: 'dashboard', label: 'Home' },
-  { key: 'add', label: 'Add' },
+  { key: 'dashboard', label: 'Overview' },
+  { key: 'add', label: 'Capture' },
   { key: 'expenses', label: 'Activity' },
   { key: 'settings', label: 'Settings' },
 ];
@@ -56,7 +56,6 @@ export default function App() {
     const loadExpenses = async () => {
       try {
         const storedExpenses = await AsyncStorage.getItem(STORAGE_KEY);
-
         if (storedExpenses) {
           setExpenses(JSON.parse(storedExpenses) as Expense[]);
         }
@@ -87,37 +86,26 @@ export default function App() {
   }, [expenses, isLoaded]);
 
   const monthKey = new Date().toISOString().slice(0, 7);
-  const totalThisMonth = expenses.reduce((sum, expense) => {
-    if (expense.date.startsWith(monthKey)) {
-      return sum + expense.amount;
-    }
-
-    return sum;
-  }, 0);
-
-  const recentExpenses = [...expenses]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 5);
-
+  const monthExpenses = expenses.filter((expense) => expense.date.startsWith(monthKey));
+  const totalThisMonth = monthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const recentExpenses = [...expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
   const categoryTotals = categories
     .map((item) => ({
       category: item,
-      total: expenses
+      total: monthExpenses
         .filter((expense) => expense.category === item)
         .reduce((sum, expense) => sum + expense.amount, 0),
     }))
     .filter((item) => item.total > 0)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 4);
+    .sort((a, b) => b.total - a.total);
   const topCategory = categoryTotals[0];
-  const monthlyExpenseCount = expenses.filter((expense) => expense.date.startsWith(monthKey)).length;
-
+  const monthlyExpenseCount = monthExpenses.length;
+  const averageExpense = monthlyExpenseCount ? totalThisMonth / monthlyExpenseCount : 0;
   const numericAmount = Number(amount);
   const hasValidAmount = Number.isFinite(numericAmount) && numericAmount > 0;
 
   const resetForm = () => {
     const form = emptyForm();
-
     setEditingExpenseId(null);
     setTitle(form.title);
     setAmount(form.amount);
@@ -177,11 +165,9 @@ export default function App() {
 
   const handleDeleteExpense = (id: string) => {
     setExpenses((current) => current.filter((expense) => expense.id !== id));
-
     if (lastAddedExpense?.id === id) {
       setLastAddedExpense(null);
     }
-
     if (editingExpenseId === id) {
       resetForm();
     }
@@ -193,24 +179,19 @@ export default function App() {
 
   const handleQuickSave = (value: number) => {
     const nextTitle = title.trim();
-
     if (!nextTitle) {
       Alert.alert('Title required', 'Add a short title before using quick save.');
       return;
     }
 
-    const expensePayload: Expense = {
+    saveExpense({
       id: `${Date.now()}`,
       title: nextTitle,
       amount: value,
       category,
       date,
       note: note.trim(),
-    };
-
-    setAmount(value.toString());
-    setEditingExpenseId(null);
-    saveExpense(expensePayload);
+    });
   };
 
   const handleUndoLastAdd = () => {
@@ -239,78 +220,72 @@ export default function App() {
 
   return (
     <View style={styles.appShell}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
+        <View style={styles.topbar}>
           <View>
-            <Text style={styles.eyebrow}>Copilot x Linear direction</Text>
-            <Text style={styles.headerTitle}>SmartSpend</Text>
+            <Text style={styles.kicker}>SmartSpend</Text>
+            <Text style={styles.screenTitle}>Spend with clarity.</Text>
           </View>
-          <View style={styles.syncBadge}>
-            <Text style={styles.syncText}>{isLoaded ? 'Saved on device' : 'Loading'}</Text>
+          <View style={styles.statusPill}>
+            <Text style={styles.statusPillText}>{isLoaded ? 'Offline saved' : 'Loading'}</Text>
           </View>
         </View>
 
         {activeTab === 'dashboard' ? (
           <>
-            <View style={styles.primaryCard}>
-              <Text style={styles.cardLabel}>Monthly spend</Text>
-              <Text style={styles.totalValue}>${totalThisMonth.toFixed(2)}</Text>
-              <Text style={styles.cardHint}>A focused snapshot of your current pace and spending pattern.</Text>
-              <View style={styles.heroDivider} />
-              <View style={styles.heroFooterRow}>
-                <View>
-                  <Text style={styles.heroFootLabel}>Top category</Text>
-                  <Text style={styles.heroFootValue}>{topCategory?.category ?? 'None yet'}</Text>
-                </View>
-                <View>
-                  <Text style={styles.heroFootLabel}>Entries</Text>
-                  <Text style={styles.heroFootValue}>{monthlyExpenseCount}</Text>
-                </View>
+            <View style={styles.heroPanel}>
+              <Text style={styles.heroEyebrow}>This month</Text>
+              <Text style={styles.heroAmount}>${totalThisMonth.toFixed(2)}</Text>
+              <Text style={styles.heroSubtext}>
+                {monthlyExpenseCount === 0
+                  ? 'Start tracking with your first expense.'
+                  : `${monthlyExpenseCount} expenses captured so far.`}
+              </Text>
+              <View style={styles.heroMetricsRow}>
+                <MetricPill label="Average" value={`$${averageExpense.toFixed(0)}`} />
+                <MetricPill label="Top" value={topCategory?.category ?? 'None'} />
               </View>
             </View>
 
-            <View style={styles.statsRow}>
-              <View style={styles.miniStatCard}>
-                <Text style={styles.miniStatLabel}>Average entry</Text>
-                <Text style={styles.miniStatValue}>${monthlyExpenseCount ? (totalThisMonth / monthlyExpenseCount).toFixed(0) : '0'}</Text>
-              </View>
-              <View style={styles.miniStatCard}>
-                <Text style={styles.miniStatLabel}>Saved mode</Text>
-                <Text style={styles.miniStatValueSmall}>Offline</Text>
-              </View>
+            <View style={styles.statGrid}>
+              <InfoCard label="Transactions" value={`${monthlyExpenseCount}`} note="Current month" />
+              <InfoCard label="Storage" value="Local" note="This device only" />
             </View>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Category breakdown</Text>
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Category pace</Text>
+                <Text style={styles.sectionCaption}>Month view</Text>
+              </View>
               {categoryTotals.length === 0 ? (
-                <Text style={styles.mutedText}>Add your first expense to see the breakdown.</Text>
+                <EmptyState title="No spending yet" text="Your category mix will appear here once you add a few entries." />
               ) : (
-                categoryTotals.map((item) => (
-                  <View key={item.category} style={styles.breakdownRow}>
-                    <View>
-                      <Text style={styles.metricLabel}>{item.category}</Text>
-                      <Text style={styles.breakdownMeta}>Category total</Text>
-                    </View>
-                    <Text style={styles.metricValue}>${item.total.toFixed(2)}</Text>
-                  </View>
+                categoryTotals.slice(0, 4).map((item) => (
+                  <CategoryBar
+                    key={item.category}
+                    category={item.category}
+                    total={item.total}
+                    max={categoryTotals[0].total}
+                  />
                 ))
               )}
             </View>
 
-            <View style={styles.card}>
-              <View style={styles.inlineHeader}>
-                <Text style={styles.sectionTitle}>Recent expenses</Text>
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Recent activity</Text>
                 <Pressable onPress={() => setActiveTab('expenses')}>
-                  <Text style={styles.linkText}>View all</Text>
+                  <Text style={styles.inlineLink}>Open all</Text>
                 </Pressable>
               </View>
               {recentExpenses.length === 0 ? (
-                <Text style={styles.mutedText}>No expenses yet. Add one from the Add tab.</Text>
+                <EmptyState title="Nothing captured" text="Use the Capture tab to log your first expense." />
               ) : (
-                recentExpenses.map((expense) => (
-                  <ExpenseRow
+                recentExpenses.slice(0, 3).map((expense) => (
+                  <ExpenseCard
                     key={expense.id}
+                    compact
                     expense={expense}
                     onDelete={handleDeleteExpense}
                     onEdit={handleEditExpense}
@@ -322,59 +297,45 @@ export default function App() {
         ) : null}
 
         {activeTab === 'add' ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>{editingExpenseId ? 'Edit expense' : 'Add expense'}</Text>
-            <Text style={styles.cardHint}>
-              {editingExpenseId ? 'Update the selected expense.' : 'Add a new expense in a few seconds.'}
-            </Text>
-
-            <View style={styles.amountHeroCard}>
-              <Text style={styles.amountHeroLabel}>Expense amount</Text>
-              <Text style={styles.amountHeroValue}>${hasValidAmount ? numericAmount.toFixed(2) : '0.00'}</Text>
-              <Text style={styles.amountHeroHint}>Choose a quick amount or enter a custom value.</Text>
+          <>
+            <View style={styles.captureHeaderCard}>
+              <Text style={styles.captureTitle}>{editingExpenseId ? 'Edit entry' : 'Capture expense'}</Text>
+              <Text style={styles.captureHint}>Quick buttons for speed, full form for control.</Text>
+              <Text style={styles.captureAmount}>${hasValidAmount ? numericAmount.toFixed(2) : '0.00'}</Text>
             </View>
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Quick amount</Text>
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Quick amounts</Text>
+                <Text style={styles.sectionCaption}>Hold to save</Text>
+              </View>
               <View style={styles.quickAmountGrid}>
                 {quickAmounts.map((value) => {
                   const isActive = amount === value.toString();
-
                   return (
                     <Pressable
                       key={value}
-                      onPress={() => handleQuickAmount(value)}
-                      onLongPress={() => handleQuickSave(value)}
                       delayLongPress={300}
+                      onLongPress={() => handleQuickSave(value)}
+                      onPress={() => handleQuickAmount(value)}
                       style={[styles.quickAmountButton, isActive && styles.quickAmountButtonActive]}
                     >
-                      <Text style={[styles.quickAmountText, isActive && styles.quickAmountTextActive]}>
-                        ${value}
-                      </Text>
+                      <Text style={[styles.quickAmountText, isActive && styles.quickAmountTextActive]}>${value}</Text>
                     </Pressable>
                   );
                 })}
               </View>
+              <View style={styles.actionRow}>
+                <ActionButton disabled={!lastAddedExpense} label="Undo last add" onPress={handleUndoLastAdd} />
+                <ActionButton destructive label="Reset all" onPress={handleResetAll} />
+              </View>
             </View>
 
-            <View style={styles.inlineActionsRow}>
-              <Pressable
-                disabled={!lastAddedExpense}
-                onPress={handleUndoLastAdd}
-                style={[styles.ghostActionButton, !lastAddedExpense && styles.ghostActionButtonDisabled]}
-              >
-                <Text style={[styles.ghostActionText, !lastAddedExpense && styles.ghostActionTextDisabled]}>
-                  Undo last add
-                </Text>
-              </Pressable>
-              <Pressable onPress={handleResetAll} style={styles.ghostActionButton}>
-                <Text style={[styles.ghostActionText, styles.resetText]}>Reset all</Text>
-              </Pressable>
-            </View>
-
-            <Text style={styles.helperText}>Press and hold a quick amount to save instantly after entering a title.</Text>
-
-            <View style={styles.formSection}>
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Details</Text>
+                <Text style={styles.sectionCaption}>{editingExpenseId ? 'Update current entry' : 'Manual entry'}</Text>
+              </View>
               <Field label="Title" value={title} onChangeText={setTitle} placeholder="Groceries" />
               <Field
                 label="Amount"
@@ -385,100 +346,66 @@ export default function App() {
               />
               <Field label="Date" value={date} onChangeText={setDate} placeholder="2026-04-03" />
               <Field label="Note" value={note} onChangeText={setNote} placeholder="Optional note" />
-            </View>
-
-            <Text style={styles.fieldLabel}>Category</Text>
-            <View style={styles.categoryWrap}>
-              {categories.map((item) => {
-                const isActive = item === category;
-
-                return (
-                  <Pressable
-                    key={item}
-                    onPress={() => setCategory(item)}
-                    style={[styles.categoryChip, isActive && styles.categoryChipActive]}
-                  >
-                    <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>
-                      {item}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Pressable onPress={handleSaveExpense} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>{editingExpenseId ? 'Update expense' : 'Save expense'}</Text>
-            </Pressable>
-
-            {editingExpenseId ? (
-              <Pressable onPress={resetForm} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Cancel editing</Text>
+              <Text style={styles.fieldLabel}>Category</Text>
+              <View style={styles.categoryWrap}>
+                {categories.map((item) => {
+                  const isActive = item === category;
+                  return (
+                    <Pressable
+                      key={item}
+                      onPress={() => setCategory(item)}
+                      style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                    >
+                      <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>{item}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Pressable onPress={handleSaveExpense} style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>{editingExpenseId ? 'Update expense' : 'Save expense'}</Text>
               </Pressable>
-            ) : null}
-          </View>
+              {editingExpenseId ? (
+                <Pressable onPress={resetForm} style={styles.secondaryButton}>
+                  <Text style={styles.secondaryButtonText}>Cancel editing</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </>
         ) : null}
 
         {activeTab === 'expenses' ? (
-          <View style={styles.card}>
-            <View style={styles.inlineHeader}>
-              <Text style={styles.sectionTitle}>All expenses</Text>
-              <Text style={styles.mutedText}>{expenses.length} items</Text>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>All activity</Text>
+              <Text style={styles.sectionCaption}>{expenses.length} items</Text>
             </View>
             {expenses.length === 0 ? (
-              <View style={styles.emptyStateCard}>
-                <Text style={styles.emptyStateTitle}>No expenses yet</Text>
-                <Text style={styles.mutedText}>Start with a quick amount or add your first expense manually.</Text>
-              </View>
+              <EmptyState title="No expenses yet" text="Capture something from the Capture tab and it will appear here." />
             ) : (
               [...expenses]
                 .sort((a, b) => b.date.localeCompare(a.date))
                 .map((expense) => (
-                  <ExpenseRow
-                    key={expense.id}
-                    expense={expense}
-                    onDelete={handleDeleteExpense}
-                    onEdit={handleEditExpense}
-                  />
+                  <ExpenseCard key={expense.id} expense={expense} onDelete={handleDeleteExpense} onEdit={handleEditExpense} />
                 ))
             )}
           </View>
         ) : null}
 
         {activeTab === 'settings' ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Settings</Text>
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Mode</Text>
-              <Text style={styles.metricValue}>Offline MVP</Text>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Settings</Text>
+              <Text style={styles.sectionCaption}>Local MVP</Text>
             </View>
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Storage</Text>
-              <Text style={styles.metricValue}>This device only</Text>
-            </View>
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Editing</Text>
-              <Text style={styles.metricValue}>Enabled</Text>
-            </View>
-            <Text style={styles.cardHint}>
-              Your expenses are stored locally on this device with no account or cloud sync.
+            <SettingRow label="Mode" value="Offline" />
+            <SettingRow label="Storage" value="This device only" />
+            <SettingRow label="Editing" value="Enabled" />
+            <SettingRow label="Current style" value="Finance dark" />
+            <Text style={styles.supportText}>
+              This version keeps everything local so the app stays simple while the UX gets refined.
             </Text>
-            <Pressable
-              onPress={() => {
-                Alert.alert('Clear saved expenses', 'Delete all saved expenses from this device?', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Clear',
-                    style: 'destructive',
-                    onPress: () => {
-                      resetForm();
-                      setExpenses([]);
-                    },
-                  },
-                ]);
-              }}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonText}>Clear saved expenses</Text>
+            <Pressable onPress={handleResetAll} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Clear all expenses</Text>
             </Pressable>
           </View>
         ) : null}
@@ -487,7 +414,6 @@ export default function App() {
       <View style={styles.tabBar}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
-
           return (
             <Pressable
               key={tab.key}
@@ -523,7 +449,7 @@ function Field({
         keyboardType={keyboardType}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#8E8E93"
+        placeholderTextColor="#64748B"
         style={styles.input}
         value={value}
       />
@@ -531,33 +457,120 @@ function Field({
   );
 }
 
-function ExpenseRow({
+function MetricPill({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metricPill}>
+      <Text style={styles.metricPillLabel}>{label}</Text>
+      <Text style={styles.metricPillValue}>{value}</Text>
+    </View>
+  );
+}
+
+function InfoCard({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <View style={styles.infoCard}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+      <Text style={styles.infoNote}>{note}</Text>
+    </View>
+  );
+}
+
+function CategoryBar({
+  category,
+  total,
+  max,
+}: {
+  category: string;
+  total: number;
+  max: number;
+}) {
+  const width = (max === 0 ? '0%' : `${Math.max(10, Math.round((total / max) * 100))}%`) as `${number}%`;
+
+  return (
+    <View style={styles.categoryBarRow}>
+      <View style={styles.categoryBarHeader}>
+        <Text style={styles.categoryBarTitle}>{category}</Text>
+        <Text style={styles.categoryBarAmount}>${total.toFixed(2)}</Text>
+      </View>
+      <View style={styles.categoryBarTrack}>
+        <View style={[styles.categoryBarFill, { width }]} />
+      </View>
+    </View>
+  );
+}
+
+function ActionButton({
+  destructive,
+  disabled,
+  label,
+  onPress,
+}: {
+  destructive?: boolean;
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.actionButton, disabled && styles.actionButtonDisabled]}
+    >
+      <Text style={[styles.actionButtonText, destructive && styles.actionButtonTextDanger]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function EmptyState({ title, text }: { title: string; text: string }) {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyText}>{text}</Text>
+    </View>
+  );
+}
+
+function SettingRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.settingRow}>
+      <Text style={styles.settingLabel}>{label}</Text>
+      <Text style={styles.settingValue}>{value}</Text>
+    </View>
+  );
+}
+
+function ExpenseCard({
+  compact,
   expense,
   onDelete,
   onEdit,
 }: {
+  compact?: boolean;
   expense: Expense;
   onDelete: (id: string) => void;
   onEdit: (expense: Expense) => void;
 }) {
   return (
-    <View style={styles.expenseRow}>
-      <View style={styles.expenseTextBlock}>
-        <Text style={styles.expenseTitle}>{expense.title}</Text>
-        <Text style={styles.expenseMeta}>
-          {expense.category} • {expense.date}
-        </Text>
+    <View style={[styles.expenseCard, compact && styles.expenseCardCompact]}>
+      <View style={styles.expenseMain}>
+        <View style={styles.expenseTopLine}>
+          <Text style={styles.expenseTitle}>{expense.title}</Text>
+          <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
+        </View>
+        <View style={styles.expenseMetaRow}>
+          <Text style={styles.expenseChip}>{expense.category}</Text>
+          <Text style={styles.expenseMeta}>{expense.date}</Text>
+        </View>
+        {expense.note ? <Text style={styles.expenseNote}>{expense.note}</Text> : null}
       </View>
       <View style={styles.expenseActions}>
-        <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
-        <View style={styles.rowActions}>
-          <Pressable onPress={() => onEdit(expense)}>
-            <Text style={styles.editText}>Edit</Text>
-          </Pressable>
-          <Pressable onPress={() => onDelete(expense.id)}>
-            <Text style={styles.deleteText}>Delete</Text>
-          </Pressable>
-        </View>
+        <Pressable onPress={() => onEdit(expense)}>
+          <Text style={styles.editText}>Edit</Text>
+        </Pressable>
+        <Pressable onPress={() => onDelete(expense.id)}>
+          <Text style={styles.deleteText}>Delete</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -566,224 +579,288 @@ function ExpenseRow({
 const styles = StyleSheet.create({
   appShell: {
     flex: 1,
-    backgroundColor: '#0B1020',
+    backgroundColor: '#090D16',
   },
   content: {
-    paddingTop: 64,
+    paddingTop: 56,
     paddingHorizontal: 20,
     paddingBottom: 120,
-    gap: 14,
+    gap: 16,
   },
-  headerRow: {
+  topbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  primaryCard: {
-    backgroundColor: '#111827',
-    borderRadius: 28,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#1F2937',
-    gap: 10,
-    shadowColor: '#000000',
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 10 },
-  },
-  heroDivider: {
-    height: 1,
-    backgroundColor: '#1F2937',
-    marginVertical: 4,
-  },
-  heroFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     gap: 12,
   },
-  heroFootLabel: {
+  kicker: {
+    color: '#7C89A6',
     fontSize: 12,
-    fontWeight: '600',
-    color: '#94A3B8',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 1,
   },
-  heroFootValue: {
-    fontSize: 18,
-    fontWeight: '700',
+  screenTitle: {
     color: '#F8FAFC',
-    marginTop: 4,
+    fontSize: 30,
+    fontWeight: '700',
+    marginTop: 6,
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  miniStatCard: {
-    flex: 1,
-    backgroundColor: '#121A2B',
-    borderRadius: 18,
-    padding: 16,
+  statusPill: {
+    backgroundColor: '#131B2C',
+    borderColor: '#202A3C',
     borderWidth: 1,
-    borderColor: '#1F2937',
-    gap: 8,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  miniStatLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#94A3B8',
-  },
-  miniStatValue: {
-    fontSize: 28,
+  statusPillText: {
+    color: '#A5B4FC',
+    fontSize: 12,
     fontWeight: '700',
-    color: '#F8FAFC',
   },
-  miniStatValueSmall: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#F8FAFC',
-  },
-  card: {
-    backgroundColor: '#0F172A',
-    borderRadius: 22,
-    padding: 20,
-    gap: 14,
+  heroPanel: {
+    backgroundColor: '#101827',
     borderWidth: 1,
     borderColor: '#1E293B',
+    borderRadius: 28,
+    padding: 24,
+    gap: 12,
   },
-  amountHeroCard: {
-    backgroundColor: '#151E31',
-    borderRadius: 22,
-    padding: 20,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#243041',
-  },
-  amountHeroLabel: {
+  heroEyebrow: {
+    color: '#94A3B8',
     fontSize: 13,
     fontWeight: '600',
-    color: '#AEAEB2',
+  },
+  heroAmount: {
+    color: '#FFFFFF',
+    fontSize: 46,
+    fontWeight: '700',
+  },
+  heroSubtext: {
+    color: '#94A3B8',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  heroMetricsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  metricPill: {
+    flex: 1,
+    backgroundColor: '#0B1220',
+    borderColor: '#243041',
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    gap: 4,
+  },
+  metricPillLabel: {
+    color: '#7C89A6',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  metricPillValue: {
+    color: '#F8FAFC',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  statGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  infoCard: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+    borderColor: '#1E293B',
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 18,
+    gap: 6,
+  },
+  infoLabel: {
+    color: '#7C89A6',
+    fontSize: 12,
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  amountHeroValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  amountHeroHint: {
-    fontSize: 14,
-    color: '#D1D5DB',
-  },
-  eyebrow: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  headerTitle: {
-    fontSize: 30,
-    fontWeight: '700',
+  infoValue: {
     color: '#F8FAFC',
-    marginTop: 4,
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  infoNote: {
+    color: '#94A3B8',
+    fontSize: 13,
+  },
+  sectionCard: {
+    backgroundColor: '#0F172A',
+    borderColor: '#1E293B',
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 20,
+    gap: 14,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
   },
   sectionTitle: {
+    color: '#F8FAFC',
     fontSize: 20,
     fontWeight: '700',
-    color: '#F8FAFC',
   },
-  cardLabel: {
+  sectionCaption: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  inlineLink: {
+    color: '#A5B4FC',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  categoryBarRow: {
+    gap: 8,
+  },
+  categoryBarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  categoryBarTitle: {
+    color: '#E2E8F0',
     fontSize: 15,
-    color: '#94A3B8',
     fontWeight: '600',
   },
-  totalValue: {
-    fontSize: 42,
+  categoryBarAmount: {
+    color: '#F8FAFC',
+    fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
-  cardHint: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#94A3B8',
-  },
-  mutedText: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  syncBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  categoryBarTrack: {
+    height: 10,
     borderRadius: 999,
     backgroundColor: '#111827',
-    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  categoryBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#7C3AED',
+  },
+  emptyState: {
+    backgroundColor: '#111827',
     borderColor: '#1F2937',
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 18,
+    gap: 6,
   },
-  syncText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#A5B4FC',
+  emptyTitle: {
+    color: '#F8FAFC',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  breakdownRow: {
+  emptyText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  captureHeaderCard: {
+    backgroundColor: '#0D1424',
+    borderColor: '#1E293B',
+    borderWidth: 1,
+    borderRadius: 28,
+    padding: 24,
+    gap: 8,
+  },
+  captureTitle: {
+    color: '#F8FAFC',
+    fontSize: 26,
+    fontWeight: '700',
+  },
+  captureHint: {
+    color: '#94A3B8',
+    fontSize: 14,
+  },
+  captureAmount: {
+    color: '#FFFFFF',
+    fontSize: 42,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  quickAmountGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickAmountButton: {
+    minWidth: 90,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 18,
+    backgroundColor: '#111827',
+    borderColor: '#263244',
+    borderWidth: 1,
+  },
+  quickAmountButtonActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  quickAmountText: {
+    color: '#E2E8F0',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  quickAmountTextActive: {
+    color: '#FFFFFF',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButton: {
+    flex: 1,
+    minHeight: 46,
     borderRadius: 16,
     backgroundColor: '#111827',
+    borderColor: '#263244',
     borderWidth: 1,
-    borderColor: '#1F2937',
-  },
-  breakdownMeta: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  metricRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
   },
-  metricLabel: {
-    fontSize: 15,
-    color: '#E5E7EB',
+  actionButtonDisabled: {
+    opacity: 0.45,
   },
-  metricValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#F8FAFC',
-  },
-  inlineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  linkText: {
+  actionButtonText: {
+    color: '#E2E8F0',
     fontSize: 14,
-    fontWeight: '600',
-    color: '#A5B4FC',
+    fontWeight: '700',
+  },
+  actionButtonTextDanger: {
+    color: '#F87171',
   },
   fieldGroup: {
     gap: 8,
   },
-  formSection: {
-    gap: 14,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#1F2937',
-  },
   fieldLabel: {
+    color: '#CBD5E1',
     fontSize: 14,
     fontWeight: '600',
-    color: '#CBD5E1',
   },
   input: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#334155',
     backgroundColor: '#0B1220',
@@ -795,34 +872,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-  },
-  quickAmountGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  quickAmountButton: {
-    minWidth: 84,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
-    backgroundColor: '#0B1220',
-  },
-  quickAmountButtonActive: {
-    backgroundColor: '#1D4ED8',
-    borderColor: '#1D4ED8',
-  },
-  quickAmountText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#E2E8F0',
-  },
-  quickAmountTextActive: {
-    color: '#FFFFFF',
   },
   categoryChip: {
     paddingHorizontal: 14,
@@ -838,115 +887,130 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     color: '#CBD5E1',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   categoryChipTextActive: {
     color: '#0F172A',
   },
   primaryButton: {
-    marginTop: 8,
-    backgroundColor: '#F8FAFC',
+    marginTop: 6,
+    height: 54,
     borderRadius: 16,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 54,
   },
   primaryButtonText: {
+    color: '#0F172A',
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
   },
   secondaryButton: {
-    marginTop: 8,
-    backgroundColor: '#111827',
+    height: 52,
     borderRadius: 16,
+    backgroundColor: '#111827',
+    borderColor: '#334155',
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 54,
-    borderWidth: 1,
-    borderColor: '#334155',
   },
   secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#E2E8F0',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  inlineActionsRow: {
+  expenseCard: {
     flexDirection: 'row',
-    gap: 10,
-  },
-  ghostActionButton: {
-    flex: 1,
-    minHeight: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
+    gap: 14,
+    borderRadius: 20,
+    backgroundColor: '#111827',
+    borderColor: '#1F2937',
     borderWidth: 1,
-    borderColor: '#334155',
-    backgroundColor: '#0B1220',
-    paddingHorizontal: 12,
+    padding: 16,
   },
-  ghostActionButtonDisabled: {
-    opacity: 0.45,
+  expenseCardCompact: {
+    paddingVertical: 14,
   },
-  ghostActionText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#E2E8F0',
+  expenseMain: {
+    flex: 1,
+    gap: 8,
   },
-  ghostActionTextDisabled: {
-    color: '#8E8E93',
-  },
-  resetText: {
-    color: '#FF3B30',
-  },
-  expenseRow: {
+  expenseTopLine: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#1F2937',
-  },
-  expenseTextBlock: {
-    flex: 1,
-    paddingRight: 16,
-    gap: 4,
-  },
-  expenseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F8FAFC',
-  },
-  expenseMeta: {
-    fontSize: 13,
-    color: '#94A3B8',
-  },
-  expenseActions: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  expenseAmount: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#F8FAFC',
-  },
-  rowActions: {
-    flexDirection: 'row',
     gap: 12,
   },
-  editText: {
+  expenseTitle: {
+    color: '#F8FAFC',
+    fontSize: 16,
+    fontWeight: '700',
+    flex: 1,
+  },
+  expenseAmount: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  expenseMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  expenseChip: {
+    color: '#C4B5FD',
+    backgroundColor: '#1C1630',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    fontSize: 12,
+    fontWeight: '700',
+    overflow: 'hidden',
+  },
+  expenseMeta: {
+    color: '#94A3B8',
     fontSize: 13,
+  },
+  expenseNote: {
+    color: '#64748B',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  expenseActions: {
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    minWidth: 52,
+  },
+  editText: {
     color: '#A5B4FC',
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   deleteText: {
+    color: '#F87171',
     fontSize: 13,
-    color: '#FF3B30',
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  settingLabel: {
+    color: '#94A3B8',
+    fontSize: 15,
+  },
+  settingValue: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  supportText: {
+    color: '#64748B',
+    fontSize: 14,
+    lineHeight: 20,
   },
   tabBar: {
     position: 'absolute',
@@ -954,47 +1018,29 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 24,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(15,23,42,0.96)',
+    gap: 8,
     padding: 8,
-    borderRadius: 18,
-    borderWidth: 1,
+    borderRadius: 22,
+    backgroundColor: 'rgba(10,15,26,0.96)',
     borderColor: '#1F2937',
+    borderWidth: 1,
   },
   tabButton: {
     flex: 1,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 14,
   },
   tabButtonActive: {
     backgroundColor: '#F8FAFC',
   },
   tabButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
     color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '700',
   },
   tabButtonTextActive: {
     color: '#0F172A',
-  },
-  helperText: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#64748B',
-  },
-  emptyStateCard: {
-    borderRadius: 18,
-    padding: 18,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#1F2937',
-    gap: 6,
-  },
-  emptyStateTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F8FAFC',
   },
 });
